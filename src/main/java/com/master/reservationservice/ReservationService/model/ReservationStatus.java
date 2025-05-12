@@ -1,8 +1,5 @@
 package com.master.reservationservice.ReservationService.model;
 
 public enum ReservationStatus {
-    CREATED,
-    PROCESSING,
-    CONFIRMED,
-    FAILED
+    CREATED
 }

@@ -2,6 +2,51 @@ version: '3.8'
 
 services:
 
+  seat-db:
+    image: postgres:14
+    container_name: seat-db
+    environment:
+      POSTGRES_USER: seat_user
+      POSTGRES_PASSWORD: seat_pass
+      POSTGRES_DB: seat_availability
+    ports:
+      - "5433:5432"
+    volumes:
+      - seat_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "seat_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  reservation-db:
+    image: postgres:14
+    container_name: reservation-db
+    environment:
+      POSTGRES_USER: reservation_user
+      POSTGRES_PASSWORD: reservation_pass
+      POSTGRES_DB: reservations
+    ports:
+      - "5434:5432"
+    volumes:
+      - reservation_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "reservation_user" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.2
+    container_name: redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: zookeeper
@@ -25,38 +70,17 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+
     healthcheck:
       test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
       interval: 5s
       timeout: 5s
       retries: 10
-
-  kafdrop:
-    image: obsidiandynamics/kafdrop
-    container_name: kafdrop
-    ports:
-      - "9000:9000"
-    environment:
-      KAFKA_BROKER_CONNECT: kafka:9092
-    depends_on:
-      kafka:
-        condition: service_healthy
-
-
-  redis:
-    image: redis:7.2
-    container_name: redis
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
   kafka-init:
     image: confluentinc/cp-kafka:7.5.0
@@ -67,3 +91,18 @@ services:
     volumes:
       - ./create-topics.sh:/create-topics.sh:ro
     entrypoint: [ "sh", "-c", "/create-topics.sh" ]
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    container_name: kafdrop
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKER_CONNECT: kafka:29092
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+volumes:
+  seat_pgdata:
+  reservation_pgdata:

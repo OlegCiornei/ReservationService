@@ -1,5 +1,7 @@
 package com.master.reservationservice.ReservationService.service;
 
+import com.master.reservationservice.ReservationService.dto.SeatInfoResponse;
+
 public interface SeatAvailabilityService {
-    Integer fetchAvailableSeats(String eventId);
+    SeatInfoResponse fetchAvailableSeats(String eventId);
 }
